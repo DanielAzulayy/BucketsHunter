@@ -1,4 +1,7 @@
 import argparse
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -6,18 +9,15 @@ def parse_args():
         description="CloudHunter is an open source tool to find open buckets, permissions"
     )
     parser.add_argument(
-        "-d", "--domain", help="Domain to scan for open buckets.", required=True
+        "-k",
+        "--keyword",
+        help="Keyword to use for generating buckets names.",
+        required=False,
     )
     parser.add_argument(
         "-b",
         "--bruteforce",
         help="Scan option to bruteforce subdomains",
-        action="store_true",
-    )
-    parser.add_argument(
-        "-a",
-        "--all",
-        help="Scan on all platforms (AWS, Azure, and GCP)",
         action="store_true",
     )
     parser.add_argument(
@@ -27,10 +27,13 @@ def parse_args():
         default="default_wordlist.txt",
     )
     parser.add_argument(
-        "-p",
-        "--platform",
-        help="Scan for a specific platform, for example only on AWS.",
-        type=str,
+        "--disable-azure", action="store_true", help="Disable Azure scan."
+    )
+    parser.add_argument(
+        "--disable-aws", action="store_true", help="Disable Amazon scan."
+    )
+    parser.add_argument(
+        "--disable-gcp", action="store_true", help="Disable Google scan."
     )
     parser.add_argument(
         "-o",
@@ -38,13 +41,27 @@ def parse_args():
         help="Save the results to a JSON file.",
         default=False,
     )
+    return parser.parse_args()
 
-    args = parser.parse_args()
-    return args
+
+def _validate_args(args):
+    if args.wordlist:
+        try:
+            with open(args.wordlist, "r") as wordlist_file:
+                wordlist_file.read()
+        except Exception as err:
+            logging.error(f"Error while loading wordlist file: {err}")
+            exit()
+    if args.output:
+        json_file_format = str(args.output).endswith(".json")
+        if not json_file_format:
+            logging.error("CloudHunter supports only JSON file as an output file.")
+            exit()
 
 
 def main():
     args = parse_args()
+    _validate_args(args)
 
 
 if __name__ == "__main__":

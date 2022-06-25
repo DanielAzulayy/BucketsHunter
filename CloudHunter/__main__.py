@@ -1,6 +1,5 @@
 import sys
 
-
 if __name__ == "__main__":
     python_version = sys.version.split()[0]
 
