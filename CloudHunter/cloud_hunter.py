@@ -1,7 +1,13 @@
 import argparse
 import logging
 
+from modules.aws import aws_scanner
+
+import utils
+
+logging.basicConfig()
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def parse_args():
@@ -12,7 +18,7 @@ def parse_args():
         "-k",
         "--keyword",
         help="Keyword to use for generating buckets names.",
-        required=False,
+        required=True,
     )
     parser.add_argument(
         "-b",
@@ -24,7 +30,7 @@ def parse_args():
         "-w",
         "--wordlist",
         help="Add a custom wordlist to generate permutations.",
-        default="default_wordlist.txt",
+        default="fuzz_wordlist.txt",
     )
     parser.add_argument(
         "--disable-azure", action="store_true", help="Disable Azure scan."
@@ -36,32 +42,57 @@ def parse_args():
         "--disable-gcp", action="store_true", help="Disable Google scan."
     )
     parser.add_argument(
+        "-t",
+        "--threads",
+        default=10,
+        help="Number of threads to use. Default: 10.",
+    )
+    parser.add_argument(
         "-o",
         "--output",
         help="Save the results to a JSON file.",
+        dest="output_file",
         default=False,
     )
     return parser.parse_args()
 
 
-def _validate_args(args):
+def validate_args(args):
     if args.wordlist:
         try:
-            with open(args.wordlist, "r") as wordlist_file:
+            with open("data/" + args.wordlist, "r") as wordlist_file:
                 wordlist_file.read()
         except Exception as err:
-            logging.error(f"Error while loading wordlist file: {err}")
+            logger.error(f"Error while loading wordlist file: {err}")
             exit()
-    if args.output:
-        json_file_format = str(args.output).endswith(".json")
+    if args.output_file:
+        json_file_format = str(args.output_file).endswith(".json")
         if not json_file_format:
-            logging.error("CloudHunter supports only JSON file as an output file.")
+            logger.error(
+                "CloudHunter currently supports only JSON file as an output file."
+            )
             exit()
+    return args
 
 
 def main():
-    args = parse_args()
-    _validate_args(args)
+    args = validate_args(parse_args())
+
+    # generate buckets permutations
+    buckets_permutations = utils.generate_bucket_permutations(
+        args.keyword, "data/" + args.wordlist
+    )
+    print(args)
+    if not args.disable_aws:
+        logger.info("Starting AWS buckets scan")
+        aws_scanner.run(buckets_permutations, args.output_file)
+
+    # if not args.disable_azure:
+    #     logger.info("Starting Azure buckets scan")
+    #     azure_scan(buckets_permutations, args.output)
+    # if not args.disable_gcp:
+    #     logger.info("Starting GCP buckets scan")
+    #     gcp_scan(buckets_permutations, args.output)
 
 
 if __name__ == "__main__":
