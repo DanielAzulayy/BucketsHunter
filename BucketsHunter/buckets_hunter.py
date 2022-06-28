@@ -1,9 +1,10 @@
 import argparse
 import logging
 
-from modules.aws import aws_scanner
-
 import utils
+
+from modules.aws import aws_scanner
+from modules.azure import azure_scanner
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -12,7 +13,7 @@ logger.setLevel(logging.INFO)
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="CloudHunter is an open source tool to find open buckets, permissions"
+        description="BucketsHunter is an open source tool to find open buckets, misconfigured permissions, and bucket's data."
     )
     parser.add_argument(
         "-k",
@@ -69,7 +70,7 @@ def validate_args(args):
         json_file_format = str(args.output_file).endswith(".json")
         if not json_file_format:
             logger.error(
-                "CloudHunter currently supports only JSON file as an output file."
+                "BucketsHunter currently supports only JSON file as an output file."
             )
             exit()
     return args
@@ -77,22 +78,18 @@ def validate_args(args):
 
 def main():
     args = validate_args(parse_args())
-
-    # generate buckets permutations
     buckets_permutations = utils.generate_bucket_permutations(
         args.keyword, "data/" + args.wordlist
     )
-    print(args)
     if not args.disable_aws:
         logger.info("Starting AWS buckets scan")
-        aws_scanner.run(buckets_permutations, args.output_file)
-
-    # if not args.disable_azure:
-    #     logger.info("Starting Azure buckets scan")
-    #     azure_scan(buckets_permutations, args.output)
+        aws_scanner.run(buckets_permutations, args)
+    if not args.disable_azure:
+        logger.info("Starting Azure buckets scan")
+        azure_scanner(buckets_permutations, args)
     # if not args.disable_gcp:
     #     logger.info("Starting GCP buckets scan")
-    #     gcp_scan(buckets_permutations, args.output)
+    #     gcp_scanner(buckets_permutations, args)
 
 
 if __name__ == "__main__":
