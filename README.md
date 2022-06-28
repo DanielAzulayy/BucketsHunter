@@ -1,8 +1,7 @@
-# CloudHunter
+# CloudHunter - CURRENTLY UNDER DEV!
 
-# CURRENTLY UNDER DEV!
-
-CloudHunter is a tool to find Open Buckets, Misconfigured Permissions and dump bucket's contents.
+BucketsHunter is a tool to find Open Buckets, Misconfigured Permissions and dump 
+bucket's contents.
 
 Will support the following:
 
