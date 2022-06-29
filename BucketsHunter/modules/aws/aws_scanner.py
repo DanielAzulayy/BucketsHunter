@@ -7,6 +7,7 @@ from boto3 import client
 from botocore import UNSIGNED
 from botocore.client import ClientError, Config
 
+AWS_URL = "{}.s3.amazonaws.com"
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -25,8 +26,8 @@ class S3BucketsScanner:
                 verify=True,
             )
         except Exception as e:
-            s3_client = None
             logger.error(e)
+            exit()
 
         return s3_client
 
@@ -35,8 +36,9 @@ class S3BucketsScanner:
             return None
 
         return {
-            "read": self._check_read_permission(bucket_name),
-            "write": self._check_write_permission(bucket_name),
+            "bucket_url": AWS_URL.format(bucket_name),
+            "bucket_readable": self._check_read_permission(bucket_name),
+            "bucket_writeable": self._check_write_permission(bucket_name),
             "read_acp": self._check_read_acl_permission(bucket_name),
             "write_acp": self._check_write_acl_permission(bucket_name),
         }
@@ -45,7 +47,6 @@ class S3BucketsScanner:
         try:
             self.s3_client.head_bucket(Bucket=bucket_name)
         except ClientError as err:
-            logger.error(err)
             return False
         else:
             return True
@@ -54,13 +55,12 @@ class S3BucketsScanner:
         try:
             self.s3_client.list_objects_v2(Bucket=bucket_name, MaxKeys=0)
         except ClientError as err:
-            logger.error(err)
             return False
         else:
             return True
 
     def _check_write_permission(self, bucket_name: str) -> bool:
-        """Checking if writing a file is possible."""
+        """Checks if writing a file to bucket is possible."""
         try:
             temp_write_file = (
                 f"BucketHunter_{int(datetime.datetime.now().timestamp())}.txt"
@@ -68,28 +68,27 @@ class S3BucketsScanner:
             # try to upload the file:
             self.s3_client.put_object(Bucket=bucket_name, Key=temp_write_file, Body=b"")
         except ClientError as err:
-            logger.error(err)
             return False
         else:
+            # successful upload, delete the file:
+            self.s3_client.delete_object(Bucket=bucket_name, Key=temp_write_file)
             return True
 
     def _check_read_acl_permission(self, bucket_name: str) -> bool:
-        """Checking if reading Access Control List is possible."""
+        """Checks if reading Access Control List is possible."""
         try:
             self.s3_client.get_bucket_acl(Bucket=bucket_name)
         except ClientError as err:
-            logger.error(err)
             return False
         else:
             return True
 
     def _check_write_acl_permission(self, bucket_name: str) -> bool:
-        """Checking if changing the Access Control List is possible.
+        """Checks if changing the Access Control List is possible.
         NOTE: This changes permissions to be public-read."""
         try:
             self.s3_client.put_bucket_acl(Bucket=bucket_name, ACL="public-read")
         except ClientError as err:
-            logger.error(err)
             return False
         else:
             return True
