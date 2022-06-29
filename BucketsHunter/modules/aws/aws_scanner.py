@@ -95,10 +95,10 @@ class S3BucketsScanner:
             return True
 
 
-def run(buckets_permutations: list, threads: int):
+def run(args, buckets_permutations: list):
     s3_bucket_scanner = S3BucketsScanner()
 
-    with ThreadPoolExecutor(max_workers=threads) as executor:
+    with ThreadPoolExecutor(max_workers=args.threads) as executor:
         futures = {
             executor.submit(s3_bucket_scanner.scan_bucket, bucket_name): bucket_name
             for bucket_name in buckets_permutations

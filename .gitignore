@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 .vscode
+.benchmarks/
 # C extensions
 *.so
 
@@ -43,7 +44,7 @@ htmlcov/
 .nox/
 .coverage
 .coverage.*
-.cache
+cache
 nosetests.xml
 coverage.xml
 *.cover
