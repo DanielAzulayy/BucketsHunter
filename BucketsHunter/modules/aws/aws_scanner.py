@@ -1,7 +1,6 @@
 import datetime
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict
 
 from boto3 import client
 from botocore import UNSIGNED
@@ -14,7 +13,9 @@ logger.setLevel(logging.INFO)
 
 
 class S3BucketsScanner:
-    def __init__(self):
+    def __init__(self, dns_resolver):
+        self._dns_resolver = dns_resolver
+
         self.s3_client = self._initialize_s3_client()
 
     def _initialize_s3_client(self) -> client:
@@ -31,16 +32,16 @@ class S3BucketsScanner:
 
         return s3_client
 
-    def scan_bucket(self, bucket_name: str) -> Dict[str, bool]:
+    def scan_bucket(self, bucket_name: str) -> dict:
         if not self._bucket_exists(bucket_name):
             return None
-
+        
         return {
             "bucket_url": AWS_URL.format(bucket_name),
             "bucket_readable": self._check_read_permission(bucket_name),
             "bucket_writeable": self._check_write_permission(bucket_name),
-            "read_acp": self._check_read_acl_permission(bucket_name),
-            "write_acp": self._check_write_acl_permission(bucket_name),
+            "bucket_read_acp": self._check_read_acl_permission(bucket_name),
+            "bucket_write_acp": self._check_write_acl_permission(bucket_name),
         }
 
     def _bucket_exists(self, bucket_name) -> False:
@@ -93,15 +94,23 @@ class S3BucketsScanner:
         else:
             return True
 
+    def scan_aws_apps(self, bucket_name: str):
+        ...
 
-def run(args, buckets_permutations: list):
-    s3_bucket_scanner = S3BucketsScanner()
 
-    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+def run(scan_config):
+    s3_bucket_scanner = S3BucketsScanner(scan_config.dns_resolver)
+
+    with ThreadPoolExecutor(max_workers=scan_config.threads) as executor:
         futures = {
             executor.submit(s3_bucket_scanner.scan_bucket, bucket_name): bucket_name
-            for bucket_name in buckets_permutations
+            for bucket_name in scan_config.buckets_permutations
         }
         for future in futures:
             if future.result():
                 print(future.result())
+
+        # aws_apps_feature = {
+        #     executor.submit(s3_bucket_scanner.scan_aws_apps, bucket_name): bucket_name
+        #     for bucket_name in scan_config.buckets_permutations
+        # }
