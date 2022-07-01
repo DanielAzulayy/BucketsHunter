@@ -1,14 +1,13 @@
 import argparse
 import logging
 
-import utils
-
+from conf import Config
 from modules.aws import aws_scanner
 from modules.azure import azure_scanner
+from utils.buckets_hunter_utils import (configure_dns_resolver,
+                                        generate_bucket_permutations)
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 def parse_args():
@@ -55,38 +54,51 @@ def parse_args():
         dest="output_file",
         default=False,
     )
+    parser.add_argument(
+        "-n",
+        "--nameservers",
+        help="Nameserver to configure the dns resolver with",
+        dest="name_server",
+        default="1.1.1.1",
+    )
+
     return parser.parse_args()
 
 
 def validate_args(args):
     if args.wordlist:
         try:
-            with open("data/" + args.wordlist, "r") as wordlist_file:
+            with open("BucketsHunter/data/" + args.wordlist, "r") as wordlist_file:
                 wordlist_file.read()
         except Exception as err:
             logger.error(f"Error while loading wordlist file: {err}")
-            exit()
     if args.output_file:
         json_file_format = str(args.output_file).endswith(".json")
         if not json_file_format:
             logger.error(
                 "BucketsHunter currently supports only JSON file as an output file."
             )
-            exit()
     return args
 
 
 def main():
-    args = validate_args(parse_args())
-    buckets_permutations = utils.generate_bucket_permutations(
-        args.keyword, "data/" + args.wordlist
+    args = validate_args(args=parse_args())
+
+    scan_config = Config(
+        dns_resolver=configure_dns_resolver(args.name_server),
+        output_file=args.output_file,
+        buckets_permutations=generate_bucket_permutations(
+            args.keyword, "BucketsHunter/data/" + args.wordlist
+        ),
+        threads=args.threads,
     )
+
     if not args.disable_aws:
         logger.info("Starting AWS buckets scan")
-        aws_scanner.run(buckets_permutations, args)
+        aws_scanner.run(scan_config)
     if not args.disable_azure:
         logger.info("Starting Azure buckets scan")
-        azure_scanner(buckets_permutations, args)
+        azure_scanner(scan_config)
     # if not args.disable_gcp:
     #     logger.info("Starting GCP buckets scan")
     #     gcp_scanner(buckets_permutations, args)
