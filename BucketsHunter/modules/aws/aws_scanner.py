@@ -6,15 +6,17 @@ from boto3 import client
 from botocore import UNSIGNED
 from botocore.client import ClientError, Config
 
-AWS_URL = "{}.s3.amazonaws.com"
-logging.basicConfig()
+from utils.dns import DNSUtils
+
+S3_BUCKET_URL = "{}.s3.amazonaws.com"
+AWS_APPS_URL = "{}.awsapps.com"
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class S3BucketsScanner:
-    def __init__(self, dns_resolver):
-        self._dns_resolver = dns_resolver
+    def __init__(self, dns_utils: DNSUtils):
+        self._dns_utils = dns_utils
 
         self.s3_client = self._initialize_s3_client()
 
@@ -32,12 +34,18 @@ class S3BucketsScanner:
 
         return s3_client
 
+    def scan_aws_apps(self, bucket_name: str):
+        aws_app_url = AWS_APPS_URL.format(bucket_name)
+        if self._dns_utils.dns_lookup(aws_app_url):
+            return aws_app_url
+        return None
+
     def scan_bucket(self, bucket_name: str) -> dict:
         if not self._bucket_exists(bucket_name):
             return None
-        
+
         return {
-            "bucket_url": AWS_URL.format(bucket_name),
+            "bucket_url": S3_BUCKET_URL.format(bucket_name),
             "bucket_readable": self._check_read_permission(bucket_name),
             "bucket_writeable": self._check_write_permission(bucket_name),
             "bucket_read_acp": self._check_read_acl_permission(bucket_name),
@@ -94,12 +102,9 @@ class S3BucketsScanner:
         else:
             return True
 
-    def scan_aws_apps(self, bucket_name: str):
-        ...
-
 
 def run(scan_config):
-    s3_bucket_scanner = S3BucketsScanner(scan_config.dns_resolver)
+    s3_bucket_scanner = S3BucketsScanner(scan_config.dns_utils)
 
     with ThreadPoolExecutor(max_workers=scan_config.threads) as executor:
         futures = {

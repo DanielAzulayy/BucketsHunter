@@ -4,8 +4,9 @@ import logging
 from conf import Config
 from modules.aws import aws_scanner
 from modules.azure import azure_scanner
-from utils.buckets_hunter_utils import (configure_dns_resolver,
-                                        generate_bucket_permutations)
+from utils.buckets_hunter_utils import (generate_bucket_permutations,
+                                        open_wordlist_file)
+from utils.dns import DNSUtils
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +37,9 @@ def parse_args():
         "--disable-azure", action="store_true", help="Disable Azure scan."
     )
     parser.add_argument(
-        "--disable-aws", action="store_true", help="Disable Amazon scan."
+        "--disable-aws", action="store_true", help="Disable AWS S3 scan."
     )
-    parser.add_argument(
-        "--disable-gcp", action="store_true", help="Disable Google scan."
-    )
+    parser.add_argument("--disable-gcp", action="store_true", help="Disable GCP scan.")
     parser.add_argument(
         "-t",
         "--threads",
@@ -84,24 +83,23 @@ def validate_args(args):
 def main():
     args = validate_args(args=parse_args())
 
+    wordlist = open_wordlist_file(f"BucketsHunter/data/{args.wordlist}")
     scan_config = Config(
-        dns_resolver=configure_dns_resolver(args.name_server),
+        dns_utils=DNSUtils(args.name_server),
         output_file=args.output_file,
-        buckets_permutations=generate_bucket_permutations(
-            args.keyword, "BucketsHunter/data/" + args.wordlist
-        ),
+        buckets_permutations=generate_bucket_permutations(args.keyword, wordlist),
+        directory_wordlist=wordlist,  # currently using the same wordlist as bucket_permutations
         threads=args.threads,
     )
-
     if not args.disable_aws:
-        logger.info("Starting AWS buckets scan")
+        print("Starting AWS buckets scan")
         aws_scanner.run(scan_config)
     if not args.disable_azure:
-        logger.info("Starting Azure buckets scan")
-        azure_scanner(scan_config)
+        print("Starting Azure buckets scan")
+        azure_scanner.run(scan_config)
     # if not args.disable_gcp:
     #     logger.info("Starting GCP buckets scan")
-    #     gcp_scanner(buckets_permutations, args)
+    #     gcp_scanner.run(buckets_permutations, args)
 
 
 if __name__ == "__main__":

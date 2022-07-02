@@ -9,4 +9,5 @@ if __name__ == "__main__":
         sys.exit(1)
 
     import buckets_hunter
+
     buckets_hunter.main()
