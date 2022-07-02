@@ -1,84 +1,108 @@
 import logging
 import re
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
 
-import dns
-import dns.resolver
 import requests
+import ujson
+
+from modules.azure.regions import AZURE_REGIONS
+from utils.dns import DNSUtils
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
+STORAGE_ACCOUNT_REGEX = re.compile("^[a-z0-9]{3,21}$")
 
 STORAGE_ACCOUNT_URL = "{}.blob.core.windows.net"
 CONTAINER_URL = "{}.blob.core.windows.net/{}"
-STORAGE_ACCOUNT_REGEX = re.compile("[^a-zA-Z0-9]")
+WEBAPP_URL = "{}.azurewebsites.net"
+AZURE_VM_URL = "{}.{}.cloudapp.azure.com"
 
 
 class AzureBucketsScanner:
-    def __init__(self, name_server: str):
-        self._name_server = name_server
+    def __init__(self, dns_utils: DNSUtils):
+        self._dns_utils = dns_utils
 
-        self.existing_storage_accounts = set()
+        self.found_storage_accounts = set()
 
-    def find_existing_storage_accounts(self, storage_accounts_names: List[str]):
-        for storage_account in storage_accounts_names:
-            if not re.search(STORAGE_ACCOUNT_REGEX, storage_account):
-                continue
-
-            storage_account_url: str = STORAGE_ACCOUNT_URL.format(storage_account)
-            if self._dns_lookup(storage_account_url):
-                # needs the storage account only and not the full URL because of the container URL format.
-                self.existing_storage_accounts.add(storage_account)
-
-    def _dns_lookup(self, storage_account_url) -> bool:
-        dns_resolver = self._initialize_dns_resolver()
-        if dns_resolver is None:
-            logger.error("Failed to initialize a dns resolver, quitting.")
-            exit()  # can't brute force without a proper dns resolver.
-        try:
-            dns_resolver.resolve(storage_account_url)
-        except dns.resolver.NXDOMAIN:  # doesn't exists
-            return False
-        except dns.resolver.Timeout:
-            logger.error(f"DNS timeout error with {storage_account_url=}")
-            return False
-        return True
-
-    def _initialize_dns_resolver(self):
-        """Config a resolver for dns lookups."""
-        try:
-            dns_resolver = dns.resolver.Resolver()
-            dns_resolver.nameservers = [self._name_server]
-            dns_resolver.timeout = 10
-        except Exception as e:
-            logger.error(e)
-            dns_resolver = None
-        return dns_resolver
-
-    def bruteforce_containers(self, container_directory: str) -> List[str]:
-        found_containers = []
-        for storage_account in self.existing_storage_accounts:
-            container_url = f"https://{CONTAINER_URL.format(storage_account, container_directory)}/?restype=container&comp=list"
+    def bruteforce_container_directory(self, container_directory: str) -> List[str]:
+        found_containers_url = []
+        for storage_account in self.found_storage_accounts:
+            # format: storage_account.blob.core.windows.net/container_directory/?restype=container&comp=list
+            container_url = f"https://{CONTAINER_URL.format(storage_account, container_directory)}?restype=container&comp=list"
             if requests.get(container_url).status_code == 200:
-                found_containers.append(container_url)
+                found_containers_url.append(container_url)
+        return found_containers_url
 
-        return found_containers
+    def scan_storage_account(self, bucket_name):
+        """Finds Azure storage accounts, only possible to check if user exists by dns lookup."""
+        if re.search(STORAGE_ACCOUNT_REGEX, bucket_name) is not None:
+            storage_account_url = STORAGE_ACCOUNT_URL.format(bucket_name)
+            if self._dns_utils.dns_lookup(url=storage_account_url):
+                self.found_storage_accounts.add(bucket_name)
+                return storage_account_url
+        return None
+
+    def scan_web_apps(self, bucket_name: str):
+        """finding azure websites by bruteforce."""
+        web_app_url = WEBAPP_URL.format(bucket_name)
+        if self._dns_utils.dns_lookup(web_app_url):
+            return web_app_url
+        return None
+
+    def scan_azure_vm(self, bucket_name: str):
+        found_vms = []
+        for region in AZURE_REGIONS:
+            # format: {bucket_name}.{region}.cloudapp.azure.com
+            azure_vm_url = AZURE_VM_URL.format(bucket_name, region)
+            if self._dns_utils.dns_lookup(azure_vm_url):
+                found_vms.append(azure_vm_url)
+        return found_vms
 
 
-def run(container_permutations: list, args):
-    azure_scanner = AzureBucketsScanner(args.name_server)
+def run(scan_config):
+    azure_scanner = AzureBucketsScanner(scan_config.dns_utils)
 
-    with ThreadPoolExecutor(max_workers=args.threads) as executor:
-        executor.submit(
-            azure_scanner.find_existing_storage_accounts, container_permutations
-        )
-        if azure_scanner.existing_storage_accounts is not None:
-            bruteforce_futures = {
+    with ThreadPoolExecutor(max_workers=scan_config.threads) as executor:
+        print("Scanning for Azure Storage Accounts")
+        storage_account_features = {
+            executor.submit(azure_scanner.scan_storage_account, bucket_name)
+            for bucket_name in scan_config.buckets_permutations
+        }
+        for feature in as_completed(storage_account_features):
+            if feature.result():
+                print(f"Storage account found: {feature.result()}")
+        print("\n")
+
+        print("Bruteforce Azure containers directories")
+        if azure_scanner.found_storage_accounts is not None:
+            bruteforce_dir_futures = {
                 executor.submit(
-                    azure_scanner.bruteforce_containers, container_directory
-                ): container_directory
-                for container_directory in args.wordlist
+                    azure_scanner.bruteforce_container_directory, container_directory
+                )
+                for container_directory in scan_config.directory_wordlist
             }
+            for feature in as_completed(bruteforce_dir_futures):
+                if feature.result():
+                    print(f"Container directory found: {feature.result()}")
+        print("\n")
+
+        print("Scanning for Azure Web Apps")
+        azure_app_features = {
+            executor.submit(azure_scanner.scan_web_apps, bucket_name)
+            for bucket_name in scan_config.buckets_permutations
+        }
+        for feature in as_completed(azure_app_features):
+            if feature.result():
+                print(f"Website found: {feature.result()}")
+        print("\n")
+
+        print("Scanning for Azure VMs across all regions")
+        azure_vms_features = {
+            executor.submit(azure_scanner.scan_azure_vm, bucket_name)
+            for bucket_name in scan_config.buckets_permutations
+        }
+        for feature in as_completed(azure_vms_features):
+            if feature.result():
+                print(f"VM found: {feature.result()}")
