@@ -1,11 +1,10 @@
 import datetime
 import logging
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from boto3 import client
 from botocore import UNSIGNED
 from botocore.client import ClientError, Config
-
 from utils.dns import DNSUtils
 
 S3_BUCKET_URL = "{}.s3.amazonaws.com"
@@ -40,7 +39,7 @@ class S3BucketsScanner:
             return aws_app_url
         return None
 
-    def scan_bucket(self, bucket_name: str) -> dict:
+    def scan_bucket_permissions(self, bucket_name: str) -> dict:
         if not self._bucket_exists(bucket_name):
             return None
 
@@ -55,7 +54,7 @@ class S3BucketsScanner:
     def _bucket_exists(self, bucket_name) -> False:
         try:
             self.s3_client.head_bucket(Bucket=bucket_name)
-        except ClientError as err:
+        except ClientError as _:
             return False
         else:
             return True
@@ -63,7 +62,7 @@ class S3BucketsScanner:
     def _check_read_permission(self, bucket_name: str) -> bool:
         try:
             self.s3_client.list_objects_v2(Bucket=bucket_name, MaxKeys=0)
-        except ClientError as err:
+        except ClientError as _:
             return False
         else:
             return True
@@ -76,7 +75,7 @@ class S3BucketsScanner:
             )
             # try to upload the file:
             self.s3_client.put_object(Bucket=bucket_name, Key=temp_write_file, Body=b"")
-        except ClientError as err:
+        except ClientError as _:
             return False
         else:
             # successful upload, delete the file:
@@ -87,7 +86,7 @@ class S3BucketsScanner:
         """Checks if reading Access Control List is possible."""
         try:
             self.s3_client.get_bucket_acl(Bucket=bucket_name)
-        except ClientError as err:
+        except ClientError as _:
             return False
         else:
             return True
@@ -97,7 +96,7 @@ class S3BucketsScanner:
         NOTE: This changes permissions to be public-read."""
         try:
             self.s3_client.put_bucket_acl(Bucket=bucket_name, ACL="public-read")
-        except ClientError as err:
+        except ClientError as _:
             return False
         else:
             return True
@@ -107,15 +106,10 @@ def run(scan_config):
     s3_bucket_scanner = S3BucketsScanner(scan_config.dns_utils)
 
     with ThreadPoolExecutor(max_workers=scan_config.threads) as executor:
-        futures = {
-            executor.submit(s3_bucket_scanner.scan_bucket, bucket_name): bucket_name
+        found_buckets_futures = {
+            executor.submit(s3_bucket_scanner.scan_bucket_permissions, bucket_name)
             for bucket_name in scan_config.buckets_permutations
         }
-        for future in futures:
-            if future.result():
-                print(future.result())
-
-        # aws_apps_feature = {
-        #     executor.submit(s3_bucket_scanner.scan_aws_apps, bucket_name): bucket_name
-        #     for bucket_name in scan_config.buckets_permutations
-        # }
+        for feature in as_completed(found_buckets_futures):
+            if feature.result():
+                print(f"S3 bucket found: {feature.result()}\n")
