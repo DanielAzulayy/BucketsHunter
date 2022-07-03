@@ -123,13 +123,21 @@ def run(scan_config):
             for bucket_name in scan_config.buckets_permutations
         }
         for feature in as_completed(found_buckets_futures):
-            if feature.result():
-                print(f"S3 bucket found: {feature.result()}\n")
+            try:
+                scan_result = feature.result()
+            except Exception as err:
+                print("Generated an exception: %s" % (err))
+            else:
+                print(f"S3 bucket found: {scan_result}\n") if scan_result else None
 
         found_apps_futures = {
             executor.submit(s3_bucket_scanner.scan_aws_apps, bucket_name)
             for bucket_name in scan_config.buckets_permutations
         }
         for feature in as_completed(found_apps_futures):
-            if feature.result():
-                print(f"AWS web app found: {feature.result()}\n")
+            try:
+                scan_result = feature.result()
+            except Exception as err:
+                print("Generated an exception: %s" % (err))
+            else:
+                print(f"AWS app found: {scan_result}\n") if scan_result else None
