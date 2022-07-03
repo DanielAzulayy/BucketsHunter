@@ -4,6 +4,7 @@ import logging
 from conf import Config
 from modules.aws import aws_scanner
 from modules.azure import azure_scanner
+from modules.gcp import gcp_scanner
 from utils.buckets_hunter_utils import (generate_bucket_permutations,
                                         open_wordlist_file)
 from utils.dns import DNSUtils
@@ -13,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="BucketsHunter is an open source tool to find open buckets, misconfigured permissions, and bucket's data."
+        description="BucketsHunter is an open source tool to find open buckets,\
+        misconfigured permissions, and bucket's data."
     )
     parser.add_argument(
         "-k",
@@ -67,10 +69,12 @@ def parse_args():
 def validate_args(args):
     if args.wordlist:
         try:
-            with open("BucketsHunter/data/" + args.wordlist, "r") as wordlist_file:
+            with open(
+                "BucketsHunter/data/" + args.wordlist, "r", encoding="UTF-8"
+            ) as wordlist_file:
                 wordlist_file.read()
         except Exception as err:
-            logger.error(f"Error while loading wordlist file: {err}")
+            logger.error("Error while loading wordlist file %s", err)
     if args.output_file:
         json_file_format = str(args.output_file).endswith(".json")
         if not json_file_format:
@@ -91,15 +95,17 @@ def main():
         directory_wordlist=wordlist,  # currently using the same wordlist as bucket_permutations
         threads=args.threads,
     )
+
+    print(f"Generated {len(scan_config.buckets_permutations)} bucket permutations.\n")
     if not args.disable_aws:
         print("Starting AWS buckets scan")
         aws_scanner.run(scan_config)
     if not args.disable_azure:
         print("Starting Azure buckets scan")
         azure_scanner.run(scan_config)
-    # if not args.disable_gcp:
-    #     logger.info("Starting GCP buckets scan")
-    #     gcp_scanner.run(buckets_permutations, args)
+    if not args.disable_gcp:
+        logger.info("Starting GCP buckets scan")
+        gcp_scanner.run(scan_config)
 
 
 if __name__ == "__main__":
