@@ -1,20 +1,21 @@
 import datetime
-import logging
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, Union
 
 from boto3 import client
 from botocore import UNSIGNED
 from botocore.client import ClientError, Config
-from utils.dns import DNSUtils
+from utils import dns, hunter_utils
 
 S3_BUCKET_URL = "{}.s3.amazonaws.com"
 AWS_APPS_URL = "{}.awsapps.com"
 
-logger = logging.getLogger(__name__)
-
 
 class S3BucketsScanner:
-    def __init__(self, dns_utils: DNSUtils):
+    PLATFORM = "AWS"
+
+    def __init__(self, dns_utils: dns.DNSUtils):
         self._dns_utils = dns_utils
 
         self.s3_client = self._initialize_s3_client()
@@ -27,28 +28,39 @@ class S3BucketsScanner:
                 use_ssl=True,
                 verify=True,
             )
-        except Exception as e:
-            logger.error(e)
-            exit()
+        except Exception as err:
+            sys.exit(err)
+        else:
+            return s3_client
 
-        return s3_client
-
-    def scan_aws_apps(self, bucket_name: str):
+    def scan_aws_apps(self, bucket_name: str) -> Dict[str, str]:
         aws_app_url = AWS_APPS_URL.format(bucket_name)
         if self._dns_utils.dns_lookup(aws_app_url):
-            return aws_app_url
+            return {
+                "platform": S3BucketsScanner.PLATFORM,
+                "service": "AWS apps",
+                "bucket": aws_app_url,
+            }
         return None
 
-    def scan_bucket_permissions(self, bucket_name: str) -> dict:
+    def scan_bucket_permissions(
+        self, bucket_name: str
+    ) -> Dict[str, Union[str, Dict[str, bool]]]:
         if not self._bucket_exists(bucket_name):
             return None
 
+        bucket_url = S3_BUCKET_URL.format(bucket_name)
         return {
-            "bucket_url": S3_BUCKET_URL.format(bucket_name),
-            "bucket_readable": self._check_read_permission(bucket_name),
-            "bucket_writeable": self._check_write_permission(bucket_name),
-            "bucket_read_acp": self._check_read_acl_permission(bucket_name),
-            "bucket_write_acp": self._check_write_acl_permission(bucket_name),
+            "platform": S3BucketsScanner.PLATFORM,
+            "service": "S3",
+            "bucket": bucket_url,
+            "permissions": {
+                "readable": self._check_read_permission(bucket_name),
+                "writeable": self._check_write_permission(bucket_name),
+                "read_acp": self._check_read_acl_permission(bucket_name),
+                "write_acp": self._check_write_acl_permission(bucket_name),
+            },
+            "files:": hunter_utils.get_bucket_files(f"https://{bucket_url}"),
         }
 
     def _bucket_exists(self, bucket_name) -> False:
@@ -113,3 +125,11 @@ def run(scan_config):
         for feature in as_completed(found_buckets_futures):
             if feature.result():
                 print(f"S3 bucket found: {feature.result()}\n")
+
+        found_apps_futures = {
+            executor.submit(s3_bucket_scanner.scan_aws_apps, bucket_name)
+            for bucket_name in scan_config.buckets_permutations
+        }
+        for feature in as_completed(found_apps_futures):
+            if feature.result():
+                print(f"AWS web app found: {feature.result()}\n")

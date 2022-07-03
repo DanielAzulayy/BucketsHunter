@@ -1,13 +1,17 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Dict, Union
 
+from utils import hunter_utils
 import requests
 
 
 class GCPBucketsScanner:
-    def __init__(self) -> None:
+    PLATFORM = "Google"
+
+    def __init__(self):
         pass
 
-    def scan_bucket_permissions(self, bucket_name: str):
+    def scan_bucket_permissions(self, bucket_name: str) -> Dict[str, Union[str, Dict[str, bool]]]:
         bucket_url = f"https://storage.googleapis.com/{bucket_name}"
         if not self._bucket_exists(bucket_url):
             return None
@@ -17,12 +21,17 @@ class GCPBucketsScanner:
         ).json()
         found_permissions = permissions_jres.get("permissions")
         if found_permissions is not None:
-            return {
-                "bucket_url": bucket_url,
-                "bucket_readable": self._check_read_permission(found_permissions),
-                "bucket_writeable": self._check_write_permission(found_permissions),
-                "bucket_listable": self._check_list_permission(found_permissions),
-                "bucket_privesc": self._check_privesc_permission(found_permissions),
+            {
+                "platform": GCPBucketsScanner.PLATFORM,
+                "service": "GCP",
+                "bucket": bucket_url,
+                "permissions": {
+                    "readable": self._check_read_permission(found_permissions),
+                    "writeable": self._check_write_permission(found_permissions),
+                    "read_acp": self._check_read_acl_permission(found_permissions),
+                    "write_acp": self._check_write_acl_permission(found_permissions),
+                },
+                "files:": hunter_utils.get_bucket_files(bucket_url),
             }
         return None
 
