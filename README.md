@@ -6,6 +6,7 @@ bucket's contents.
 ## TODO: 
 - [ ] Better printing format from scan results
 - [ ] UI
+- [ ] Proxy / TOR support
 
 
 Will support the following:
