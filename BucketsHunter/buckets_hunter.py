@@ -96,9 +96,9 @@ def main():
     )
 
     print(f"Generated {len(scan_config.buckets_permutations)} bucket permutations.\n")
-    # if not args.disable_aws:
-    #     print("Starting AWS buckets scan")
-    #     aws_scanner.run(scan_config)
+    if not args.disable_aws:
+        print("Starting AWS buckets scan")
+        aws_scanner.run(scan_config)
     if not args.disable_azure:
         print("Starting Azure buckets scan")
         azure_scanner.run(scan_config)
