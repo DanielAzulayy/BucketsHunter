@@ -4,8 +4,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List
 
 import requests
-import ujson
-
 from modules.azure.regions import AZURE_REGIONS
 from utils.dns import DNSUtils
 
@@ -13,7 +11,6 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 
 STORAGE_ACCOUNT_REGEX = re.compile("^[a-z0-9]{3,21}$")
-
 STORAGE_ACCOUNT_URL = "{}.blob.core.windows.net"
 CONTAINER_URL = "{}.blob.core.windows.net/{}"
 WEBAPP_URL = "{}.azurewebsites.net"
@@ -72,7 +69,7 @@ def run(scan_config):
         }
         for feature in as_completed(storage_account_features):
             if feature.result():
-                print(f"Storage account found: {feature.result()}")
+                print(f"Azure Storage account found: {feature.result()}")
         print("\n")
 
         print("Bruteforce Azure containers directories")
@@ -95,7 +92,7 @@ def run(scan_config):
         }
         for feature in as_completed(azure_app_features):
             if feature.result():
-                print(f"Website found: {feature.result()}")
+                print(f"Azure Website found: {feature.result()}")
         print("\n")
 
         print("Scanning for Azure VMs across all regions")
@@ -105,4 +102,4 @@ def run(scan_config):
         }
         for feature in as_completed(azure_vms_features):
             if feature.result():
-                print(f"VM found: {feature.result()}")
+                print(f"Azure VM found: {feature.result()}")
