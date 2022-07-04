@@ -7,6 +7,7 @@ from boto3 import client
 from botocore import UNSIGNED
 from botocore.client import ClientError, Config
 from utils import dns, hunter_utils
+from utils.notify import print_open_bucket, print_service
 
 S3_BUCKET_URL = "{}.s3.amazonaws.com"
 AWS_APPS_URL = "{}.awsapps.com"
@@ -60,7 +61,7 @@ class S3BucketsScanner:
                 "read_acp": self._check_read_acl_permission(bucket_name),
                 "write_acp": self._check_write_acl_permission(bucket_name),
             },
-            "files:": hunter_utils.get_bucket_files(f"https://{bucket_url}"),
+            "files": hunter_utils.get_bucket_files(f"https://{bucket_url}"),
         }
 
     def _bucket_exists(self, bucket_name) -> False:
@@ -116,6 +117,7 @@ class S3BucketsScanner:
 
 def run(scan_config):
     s3_bucket_scanner = S3BucketsScanner(scan_config.dns_utils)
+    aws_scan_results = []
 
     with ThreadPoolExecutor(max_workers=scan_config.threads) as executor:
         found_buckets_futures = {
@@ -124,11 +126,13 @@ def run(scan_config):
         }
         for feature in as_completed(found_buckets_futures):
             try:
-                scan_result = feature.result()
+                s3_scan_result = feature.result()
             except Exception as err:
                 print("Generated an exception: %s" % (err))
             else:
-                print(f"S3 bucket found: {scan_result}\n") if scan_result else None
+                if s3_scan_result:
+                    print_open_bucket(s3_scan_result)
+                    aws_scan_results.append(s3_scan_result)
 
         found_apps_futures = {
             executor.submit(s3_bucket_scanner.scan_aws_apps, bucket_name)
@@ -136,8 +140,12 @@ def run(scan_config):
         }
         for feature in as_completed(found_apps_futures):
             try:
-                scan_result = feature.result()
+                aws_app_scan_result = feature.result()
             except Exception as err:
                 print("Generated an exception: %s" % (err))
             else:
-                print(f"AWS app found: {scan_result}\n") if scan_result else None
+                if aws_app_scan_result:
+                    print_service(aws_app_scan_result)
+                    aws_scan_results.append(aws_app_scan_result)
+
+    return aws_scan_results

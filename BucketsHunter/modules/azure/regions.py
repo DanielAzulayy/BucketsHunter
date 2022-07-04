@@ -32,3 +32,6 @@ AZURE_REGIONS = [
     "southafricawest",
     "southeastasia",
 ]
+
+# TODO: add an option to select one region or all of them
+AZURE_REGIONS = ['eastus2']

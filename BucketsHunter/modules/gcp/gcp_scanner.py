@@ -1,8 +1,9 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, Union
 
-from utils import hunter_utils
 import requests
+from utils import hunter_utils
+from utils.notify import print_service
 
 
 class GCPBucketsScanner:
@@ -11,8 +12,10 @@ class GCPBucketsScanner:
     def __init__(self):
         pass
 
-    def scan_bucket_permissions(self, bucket_name: str) -> Dict[str, Union[str, Dict[str, bool]]]:
-        bucket_url = f"https://storage.googleapis.com/{bucket_name}"
+    def scan_bucket_permissions(
+        self, bucket_name: str
+    ) -> Dict[str, Union[str, Dict[str, bool]]]:
+        bucket_url = f"https://www.googleapis.com/storage/v1/b/{bucket_name}"
         if not self._bucket_exists(bucket_url):
             return None
 
@@ -21,17 +24,17 @@ class GCPBucketsScanner:
         ).json()
         found_permissions = permissions_jres.get("permissions")
         if found_permissions is not None:
-            {
+            return {
                 "platform": GCPBucketsScanner.PLATFORM,
                 "service": "GCP",
                 "bucket": bucket_url,
                 "permissions": {
                     "readable": self._check_read_permission(found_permissions),
                     "writeable": self._check_write_permission(found_permissions),
-                    "read_acp": self._check_read_acl_permission(found_permissions),
-                    "write_acp": self._check_write_acl_permission(found_permissions),
+                    "listable": self._check_list_permission(found_permissions),
+                    "privesc": self._check_privesc_permission(found_permissions),
                 },
-                "files:": hunter_utils.get_bucket_files(bucket_url),
+                "files": hunter_utils.get_bucket_files(bucket_url),
             }
         return None
 
@@ -59,12 +62,22 @@ class GCPBucketsScanner:
 
 def run(scan_config):
     gcp_scanner = GCPBucketsScanner()
+    gcp_scan_results = []
 
     with ThreadPoolExecutor(max_workers=scan_config.threads) as executor:
-        gcp_permissions_features = {
+        found_buckets_futures = {
             executor.submit(gcp_scanner.scan_bucket_permissions, bucket_name)
             for bucket_name in scan_config.buckets_permutations
         }
-        for feature in as_completed(gcp_permissions_features):
-            if feature.result():
-                print(f"{feature.result()}")
+
+        for feature in as_completed(found_buckets_futures):
+            try:
+                gcp_scan_result = feature.result()
+            except Exception as err:
+                print("Generated an exception: %s" % (err))
+            else:
+                if gcp_scan_result:
+                    print_service(gcp_scan_result)
+                    gcp_scan_results.append(gcp_scan_result)
+
+    return gcp_scan_results
