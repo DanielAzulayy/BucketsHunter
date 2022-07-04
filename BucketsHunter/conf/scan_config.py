@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
-from utils.dns import DNSUtils
+from BucketsHunter.utils.dns import DNSUtils
 
 
 @dataclass

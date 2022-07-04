@@ -4,9 +4,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Union
 
 import requests
-from modules.azure.regions import AZURE_REGIONS
-from utils.dns import DNSUtils
-from utils.notify import print_info, print_service
+
+from BucketsHunter.modules.azure.regions import AZURE_REGIONS
+from BucketsHunter.utils.notify import print_info, print_service
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ AZURE_VM_URL = "{}.{}.cloudapp.azure.com"
 class AzureBucketsScanner:
     PLATFORM = "Azure"
 
-    def __init__(self, dns_utils: DNSUtils):
+    def __init__(self, dns_utils):
         self._dns_utils = dns_utils
 
         self.found_storage_accounts = set()
