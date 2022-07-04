@@ -2,14 +2,6 @@
 
 BucketsHunter is an opensource tool to find Open Buckets, Misconfigured Permissions and dump bucket's contents.
 
-<<<<<<< HEAD
-## TODO: 
-- [ ] Better printing format from scan results
-- [ ] UI
-- [ ] Proxy / TOR support
-=======
-## Installation 
->>>>>>> 0a6960a (public push 2)
 
 Via pip:
 ```bash
