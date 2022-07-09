@@ -7,7 +7,7 @@ From source:
 ```bash
 git clone git@github.com:DanielAzulayy/BucketsHunter.git
 cd BucketsHunter
-pip3 install -r requirements.txt
+python3 -m pip install -r requirements.txt
 python3 -m BucketsHunter
 ```
 
