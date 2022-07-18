@@ -10,10 +10,6 @@ class Colors:
     UNDERLINE = "\033[4m"
 
 
-def print_info(message):
-    print(f"{Colors.BOLD}{Colors.OKBLUE}[+] {message}{Colors.ENDC}\n")
-
-
 def print_open_bucket(result):
     msg = f"""{Colors.OKCYAN} Open {result['platform']} {result['service']} 
         bucket: {result['bucket']}
@@ -23,13 +19,13 @@ def print_open_bucket(result):
     print(msg)
 
 
+def prettify_files(urls):
+    return "\n\t\t".join(urls)
+
+
 def print_service(result):
     msg = f"""{Colors.OKCYAN} {result['platform']} service found:
         service: {result['service']}
         bucket: {result['bucket']}
         """
     print(msg)
-
-
-def prettify_files(urls):
-    return "\n\t\t".join(urls)
