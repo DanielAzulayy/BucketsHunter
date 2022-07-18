@@ -2,9 +2,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, Union
 
 import requests
-
 from BucketsHunter.utils import hunter_utils
 from BucketsHunter.utils.notify import print_service
+from loguru import logger
 
 
 class GCPBucketsScanner:
@@ -75,7 +75,7 @@ def run(scan_config):
             try:
                 gcp_scan_result = feature.result()
             except Exception as err:
-                print("Generated an exception: %s" % (err))
+                logger.error(err)
             else:
                 if gcp_scan_result:
                     print_service(gcp_scan_result)

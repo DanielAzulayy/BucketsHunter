@@ -6,9 +6,9 @@ from typing import Dict, Union
 from boto3 import client
 from botocore import UNSIGNED
 from botocore.client import ClientError, Config
-
 from BucketsHunter.utils import dns, hunter_utils
 from BucketsHunter.utils.notify import print_open_bucket, print_service
+from loguru import logger
 
 S3_BUCKET_URL = "{}.s3.amazonaws.com"
 AWS_APPS_URL = "{}.awsapps.com"
@@ -59,8 +59,8 @@ class S3BucketsScanner:
             "permissions": {
                 "readable": self._check_read_permission(bucket_name),
                 "writeable": self._check_write_permission(bucket_name),
-                "read_acp": self._check_read_acl_permission(bucket_name),
-                "write_acp": self._check_write_acl_permission(bucket_name),
+                "acp_readable": self._check_read_acl_permission(bucket_name),
+                "acp_writeable": self._check_write_acl_permission(bucket_name),
             },
             "files": hunter_utils.get_bucket_files(f"https://{bucket_url}"),
         }
@@ -129,7 +129,7 @@ def run(scan_config):
             try:
                 s3_scan_result = feature.result()
             except Exception as err:
-                print("Generated an exception: %s" % (err))
+                logger.error(err)
             else:
                 if s3_scan_result:
                     print_open_bucket(s3_scan_result)
@@ -143,7 +143,7 @@ def run(scan_config):
             try:
                 aws_app_scan_result = feature.result()
             except Exception as err:
-                print("Generated an exception: %s" % (err))
+                logger.error(err)
             else:
                 if aws_app_scan_result:
                     print_service(aws_app_scan_result)

@@ -4,12 +4,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Union
 
 import requests
-
 from BucketsHunter.modules.azure.regions import AZURE_REGIONS
-from BucketsHunter.utils.notify import print_info, print_service
-
-logging.basicConfig()
-logger = logging.getLogger(__name__)
+from BucketsHunter.utils.notify import print_service
+from loguru import logger
 
 STORAGE_ACCOUNT_REGEX = re.compile("^[a-z0-9]{3,21}$")
 STORAGE_ACCOUNT_URL = "{}.blob.core.windows.net"
@@ -82,7 +79,7 @@ def run(scan_config):
     azure_scan_results = []
 
     with ThreadPoolExecutor(max_workers=scan_config.threads) as executor:
-        print_info("Scanning for Azure Storage Accounts")
+        logger.info("Scanning for Azure Storage Accounts")
         storage_account_features = {
             executor.submit(azure_scanner.scan_storage_account, bucket_name)
             for bucket_name in scan_config.buckets_permutations
@@ -110,7 +107,7 @@ def run(scan_config):
         #             print(f"Container directory found: {feature.result()}")
         # print("\n")
 
-        print_info("Scanning for Azure Web Apps")
+        logger.info("Scanning for Azure Web Apps")
         azure_app_features = {
             executor.submit(azure_scanner.scan_web_apps, bucket_name)
             for bucket_name in scan_config.buckets_permutations
@@ -127,7 +124,7 @@ def run(scan_config):
 
         print("\n")
 
-        print_info("Scanning for Azure VMs\n")
+        logger.info("Scanning for Azure VMs\n")
         azure_vms_features = {
             executor.submit(azure_scanner.scan_azure_vm, bucket_name)
             for bucket_name in scan_config.buckets_permutations
