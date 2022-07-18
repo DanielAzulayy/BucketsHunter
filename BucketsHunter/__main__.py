@@ -1,19 +1,16 @@
 import argparse
-import logging
+import importlib
 
 import ujson
+from loguru import logger
+
 from BucketsHunter.conf.scan_config import Config
 from BucketsHunter.modules.aws import aws_scanner
 from BucketsHunter.modules.azure import azure_scanner
 from BucketsHunter.modules.gcp import gcp_scanner
 from BucketsHunter.utils.dns import DNSUtils
-from BucketsHunter.utils.hunter_utils import (
-    generate_bucket_permutations,
-    open_wordlist_file,
-)
-from BucketsHunter.utils.notify import print_info
-
-logger = logging.getLogger(__name__)
+from BucketsHunter.utils.hunter_utils import (generate_bucket_permutations,
+                                              open_wordlist_file)
 
 
 def parse_args():
@@ -40,12 +37,13 @@ def parse_args():
         default="buckets_wordlist.txt",
     )
     parser.add_argument(
-        "--disable-azure", action="store_true", help="Disable Azure scan."
+        "-p",
+        "--platform",
+        dest="platform",
+        help="Platform for scanning",
+        type=str,
+        default="all",
     )
-    parser.add_argument(
-        "--disable-aws", action="store_true", help="Disable AWS S3 scan."
-    )
-    parser.add_argument("--disable-gcp", action="store_true", help="Disable GCP scan.")
     parser.add_argument(
         "-t",
         "--threads",
@@ -87,6 +85,14 @@ def validate_args(args):
                 "BucketsHunter currently supports only JSON file as an output file."
             )
             exit()
+    if args.platform != "all":
+        platforms = ["aws", "azure", "gcp"]
+        matching = [platform for platform in platforms if platform == args.platform]
+        if not matching:
+            logger.error(
+                f"BucketsHunter doesn't support {args.platform} as a platform."
+            )
+            exit()
     return args
 
 
@@ -101,26 +107,34 @@ def main():
         directory_wordlist=wordlist,  # currently using the same wordlist as bucket_permutations
         threads=args.threads,
     )
-    print_info(
+    logger.info(
         f"Generated {len(scan_config.buckets_permutations)} bucket permutations."
     )
 
     final_scan_results = []
-    if not args.disable_aws:
-        print_info("Starting AWS buckets scan")
+    if args.platform != "all":
+        # user provided input, instead of bunch of if else statements.
+        scan_platform_module = importlib.import_module(
+            f"BucketsHunter.modules.{args.platform}.{args.platform}_scanner"
+        )
+        logger.info(f"Starting {args.platform} buckets scan")
+        final_scan_results = scan_platform_module.run(scan_config)
+    else:
+        logger.info("Starting AWS buckets scan")
         final_scan_results += aws_scanner.run(scan_config)
-    if not args.disable_azure:
-        print_info("Starting Azure buckets scan")
+
+        logger.info("Starting Azure buckets scan")
         final_scan_results += azure_scanner.run(scan_config)
-    if not args.disable_gcp:
-        print_info("Starting GCP buckets scan")
+
+        logger.info("Starting GCP buckets scan")
         final_scan_results += gcp_scanner.run(scan_config)
 
     if final_scan_results:
         with open(args.output_file, "w") as json_file:
-            json_file.write(
-                ujson.dumps(final_scan_results, escape_forward_slashes=False)
-            )
+            jres = ujson.dumps(final_scan_results)
+            json_file.write(jres, escape_forward_slashes=False)
+
+    logger.info("Finished with scanning.")
 
 
 if __name__ == "__main__":
