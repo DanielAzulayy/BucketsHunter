@@ -64,7 +64,7 @@ class AzureBucketsScanner:
             azure_vm_url = AZURE_VM_URL.format(bucket_name, region)
             if self._dns_utils.dns_lookup(azure_vm_url):
                 found_vms.append(azure_vm_url)
-
+                
         if found_vms:
             return {
                 "platform": AzureBucketsScanner.PLATFORM,
@@ -136,7 +136,6 @@ def run(scan_config):
                 logger.error("Generated an exception: %s" % (err))
             else:
                 if vms_scan_result:
-                    print(vms_scan_result)
                     print_service(vms_scan_result)
                     azure_scan_results.append(vms_scan_result)
 

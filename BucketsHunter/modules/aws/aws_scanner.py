@@ -32,8 +32,7 @@ class S3BucketsScanner:
             )
         except Exception as err:
             sys.exit(err)
-        else:
-            return s3_client
+        return s3_client
 
     def scan_aws_apps(self, bucket_name: str) -> Dict[str, str]:
         aws_app_url = AWS_APPS_URL.format(bucket_name)
@@ -70,16 +69,14 @@ class S3BucketsScanner:
             self.s3_client.head_bucket(Bucket=bucket_name)
         except ClientError as _:
             return False
-        else:
-            return True
+        return True
 
     def _check_read_permission(self, bucket_name: str) -> bool:
         try:
             self.s3_client.list_objects_v2(Bucket=bucket_name, MaxKeys=0)
         except ClientError as _:
             return False
-        else:
-            return True
+        return True
 
     def _check_write_permission(self, bucket_name: str) -> bool:
         """Checks if writing a file to bucket is possible."""
@@ -102,8 +99,7 @@ class S3BucketsScanner:
             self.s3_client.get_bucket_acl(Bucket=bucket_name)
         except ClientError as _:
             return False
-        else:
-            return True
+        return True
 
     def _check_write_acl_permission(self, bucket_name: str) -> bool:
         """Checks if changing the Access Control List is possible.
@@ -112,8 +108,7 @@ class S3BucketsScanner:
             self.s3_client.put_bucket_acl(Bucket=bucket_name, ACL="public-read")
         except ClientError as _:
             return False
-        else:
-            return True
+        return True
 
 
 def run(scan_config):

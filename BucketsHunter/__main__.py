@@ -1,5 +1,6 @@
 import argparse
 import importlib
+from xmlrpc.client import escape
 
 import ujson
 from loguru import logger
@@ -129,10 +130,10 @@ def main():
         logger.info("Starting GCP buckets scan")
         final_scan_results += gcp_scanner.run(scan_config)
 
-    if final_scan_results:
+    if final_scan_results and args.output_file:
         with open(args.output_file, "w") as json_file:
-            jres = ujson.dumps(final_scan_results)
-            json_file.write(jres, escape_forward_slashes=False)
+            logger.info(f"Writing to: {args.output_file}")
+            ujson.dump(final_scan_results, json_file, escape_forward_slashes=False, indent=4)
 
     logger.info("Finished with scanning.")
 

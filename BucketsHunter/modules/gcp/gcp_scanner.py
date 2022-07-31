@@ -8,7 +8,7 @@ from loguru import logger
 
 
 class GCPBucketsScanner:
-    PLATFORM = "Google"
+    PLATFORM = "Gcp"
 
     def __init__(self):
         pass

@@ -1,0 +1,46 @@
+[
+    {
+        "platform": "AWS",
+        "service": "S3",
+        "bucket": "tesla2.s3.amazonaws.com",
+        "permissions": {
+            "readable": true,
+            "writeable": false,
+            "acp_readable": false,
+            "acp_writeable": false
+        },
+        "files": [
+            "https://tesla2.s3.amazonaws.com/tesla2",
+            "https://tesla2.s3.amazonaws.com/asset-manifest.json",
+            "https://tesla2.s3.amazonaws.com/favicon.ico",
+            "https://tesla2.s3.amazonaws.com/index.html",
+            "https://tesla2.s3.amazonaws.com/manifest.json",
+            "https://tesla2.s3.amazonaws.com/service-worker.js",
+            "https://tesla2.s3.amazonaws.com/static/css/main.2a3c3c91.css",
+            "https://tesla2.s3.amazonaws.com/static/css/main.2a3c3c91.css.map",
+            "https://tesla2.s3.amazonaws.com/static/js/main.7622388b.js",
+            "https://tesla2.s3.amazonaws.com/static/js/main.7622388b.js.map",
+            "https://tesla2.s3.amazonaws.com/static/js/main.a2a2a07d.js",
+            "https://tesla2.s3.amazonaws.com/static/js/main.a2a2a07d.js.map",
+            "https://tesla2.s3.amazonaws.com/static/media/100d.c002c790.svg",
+            "https://tesla2.s3.amazonaws.com/static/media/19-wheel@2x.3b975a00.png",
+            "https://tesla2.s3.amazonaws.com/static/media/75d.9c937cb9.svg",
+            "https://tesla2.s3.amazonaws.com/static/media/P100d.62ed87b4.svg",
+            "https://tesla2.s3.amazonaws.com/static/media/icon-19-wheel.c8ef3398.svg",
+            "https://tesla2.s3.amazonaws.com/static/media/icon-ac-off.4911d439.svg",
+            "https://tesla2.s3.amazonaws.com/static/media/icon-ac-on.454722a2.svg",
+            "https://tesla2.s3.amazonaws.com/static/media/icon-arrow-decrease-on.3190ed1f.svg",
+            "https://tesla2.s3.amazonaws.com/static/media/icon-arrow-increase-on.d39bdd8a.svg",
+            "https://tesla2.s3.amazonaws.com/static/media/icon-button-ac.a2c519e8.png",
+            "https://tesla2.s3.amazonaws.com/static/media/icon-button-heat.3e2ecab4.png",
+            "https://tesla2.s3.amazonaws.com/static/media/icon-heat-off.c4c34600.svg",
+            "https://tesla2.s3.amazonaws.com/static/media/icon-heat-on.88ae2b7d.svg",
+            "https://tesla2.s3.amazonaws.com/static/media/models_rangemodule_hero@2x.ff16203f.jpg"
+        ]
+    },
+    {
+        "platform": "AWS",
+        "service": "AWS apps",
+        "bucket": "tesla.awsapps.com"
+    }
+]
