@@ -5,7 +5,7 @@ BucketsHunter is an opensource tool to find Open Buckets, Misconfigured Permissi
 
 From source:
 ```bash
-git clone git@github.com:DanielAzulayy/BucketsHunter.git
+git clone https://github.com/DanielAzulayy/BucketsHunter.git
 cd BucketsHunter
 python3 -m pip install -r requirements.txt
 python3 -m BucketsHunter
