@@ -5,13 +5,15 @@ from xmlrpc.client import escape
 import ujson
 from loguru import logger
 
-from BucketsHunter.conf.scan_config import Config
-from BucketsHunter.modules.aws import aws_scanner
-from BucketsHunter.modules.azure import azure_scanner
-from BucketsHunter.modules.gcp import gcp_scanner
-from BucketsHunter.utils.dns import DNSUtils
-from BucketsHunter.utils.hunter_utils import (generate_bucket_permutations,
-                                              open_wordlist_file)
+from conf.scan_config import Config
+from modules.aws import aws_scanner
+from modules.azure import azure_scanner
+from modules.gcp import gcp_scanner
+from utils.dns import DNSUtils
+from utils.hunter_utils import (
+    generate_bucket_permutations,
+    open_wordlist_file,
+)
 
 
 def parse_args():
@@ -24,12 +26,6 @@ def parse_args():
         "--keyword",
         help="Keyword to use for generating bucket permutations.",
         required=True,
-    )
-    parser.add_argument(
-        "-b",
-        "--bruteforce",
-        help="Scan option to bruteforce subdomains",
-        action="store_true",
     )
     parser.add_argument(
         "-w",
@@ -133,7 +129,9 @@ def main():
     if final_scan_results and args.output_file:
         with open(args.output_file, "w") as json_file:
             logger.info(f"Writing to: {args.output_file}")
-            ujson.dump(final_scan_results, json_file, escape_forward_slashes=False, indent=4)
+            ujson.dump(
+                final_scan_results, json_file, escape_forward_slashes=False, indent=4
+            )
 
     logger.info("Finished with scanning.")
 

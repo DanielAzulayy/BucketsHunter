@@ -6,9 +6,10 @@ from typing import Dict, Union
 from boto3 import client
 from botocore import UNSIGNED
 from botocore.client import ClientError, Config
-from BucketsHunter.utils import dns, hunter_utils
-from BucketsHunter.utils.notify import print_open_bucket, print_service
 from loguru import logger
+
+from utils import dns, hunter_utils
+from utils.notify import print_open_bucket, print_service
 
 S3_BUCKET_URL = "{}.s3.amazonaws.com"
 AWS_APPS_URL = "{}.awsapps.com"
