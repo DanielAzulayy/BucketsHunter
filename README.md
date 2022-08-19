@@ -8,7 +8,13 @@ From source:
 git clone https://github.com/DanielAzulayy/BucketsHunter.git
 cd BucketsHunter
 python3 -m pip install -r requirements.txt
-python3 -m BucketsHunter
+python3 -m buckets_hunter
+```
+
+From PyPi
+```bash
+pip install bucketshunter==2.0
+buckets-hunter
 ```
 
 ## Features ⚡️
