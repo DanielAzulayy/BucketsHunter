@@ -2,10 +2,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, Union
 
 import requests
+from buckets_hunter.utils import hunter_utils
+from buckets_hunter.utils.notify import print_service
 from loguru import logger
-
-from utils import hunter_utils
-from utils.notify import print_service
 
 
 class GCPBucketsScanner:

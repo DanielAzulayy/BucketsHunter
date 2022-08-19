@@ -4,10 +4,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Union
 
 import requests
+from buckets_hunter.modules.azure.regions import AZURE_REGIONS
+from buckets_hunter.utils.notify import print_service
 from loguru import logger
-
-from modules.azure.regions import AZURE_REGIONS
-from utils.notify import print_service
 
 STORAGE_ACCOUNT_REGEX = re.compile("^[a-z0-9]{3,21}$")
 STORAGE_ACCOUNT_URL = "{}.blob.core.windows.net"
