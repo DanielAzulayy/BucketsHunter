@@ -43,6 +43,7 @@ def parse_args():
         "-t",
         "--threads",
         default=10,
+        type=int,
         help="Number of threads to use. Default: 10.",
     )
     parser.add_argument(
@@ -127,8 +128,8 @@ def main():
             ujson.dump(
                 final_scan_results, json_file, escape_forward_slashes=False, indent=4
             )
-
     logger.info("Finished with scanning.")
+
 
 
 if __name__ == "__main__":
