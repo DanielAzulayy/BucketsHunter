@@ -1,19 +1,15 @@
+import os
 import re
-from typing import List
+from typing import List, Iterator
 
 import requests
 
 KEY_REGEX = re.compile(r"<(?:Key|Name)>(.*?)</(?:Key|Name)>")
 
 
-def generate_bucket_permutations(
-    keyword: str, mutations_wordlist: List[str]
-) -> List[str]:
-    bucket_names = []
-
-    # "clean" keyword with no mutations.
-    bucket_names.append(keyword)
-    for mutation in mutations_wordlist:
+def generate_bucket_permutations(keyword: str, mutations) -> Iterator:
+    bucket_names = [keyword]
+    for mutation in list(mutations):
         # format ex: {keyword}-{mutation}.s3.amazonaws.com
         bucket_names.append(f"{keyword}-{mutation}")
 
@@ -28,14 +24,8 @@ def generate_bucket_permutations(
         bucket_names.append(f"{mutation}_{keyword}")
         bucket_names.append(f"{mutation}{keyword}")
 
-    return bucket_names
+    return iter(bucket_names)
 
-
-def open_wordlist_file(wordlist_file):
-    mutations_wordlist = []
-    with open(wordlist_file, "r") as wordlist_file:
-        mutations_wordlist = wordlist_file.read().splitlines()
-    return mutations_wordlist
 
 
 def get_bucket_files(bucket_url: str) -> List[str]:
@@ -47,7 +37,8 @@ def get_bucket_files(bucket_url: str) -> List[str]:
 
     found_bucket_files = []
     if bucket_files is not None:
-        for bucket_file in bucket_files:
-            found_bucket_files.append(f"{bucket_url}/{bucket_file}")
+        found_bucket_files.extend(
+            f"{bucket_url}/{bucket_file}" for bucket_file in bucket_files
+        )
 
     return found_bucket_files

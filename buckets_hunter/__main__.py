@@ -10,8 +10,12 @@ from buckets_hunter.modules.aws import aws_scanner
 from buckets_hunter.modules.azure import azure_scanner
 from buckets_hunter.modules.gcp import gcp_scanner
 from buckets_hunter.utils.dns import DNSUtils
-from buckets_hunter.utils.hunter_utils import (generate_bucket_permutations,
-                                               open_wordlist_file)
+from buckets_hunter.utils import hunter_utils
+from buckets_hunter.utils.hunter_utils import (
+    generate_bucket_permutations,
+)
+
+SUPPORTED_PLATFORMS = ["aws", "azure", "gcp"]
 
 
 def parse_args():
@@ -66,31 +70,25 @@ def parse_args():
 
 def validate_args(args):
     if args.output_file:
-        json_file_format = str(args.output_file).endswith(".json")
-        if not json_file_format:
-            logger.error(
-                "BucketsHunter currently supports only JSON file as an output file."
-            )
+        if not (file_format_input := str(args.output_file).endswith(".json")):
+            logger.error("BucketsHunter supports JSON files only.")
             exit()
-    if args.platform != "all":
-        platforms = ["aws", "azure", "gcp"]
-        matching = [platform for platform in platforms if platform == args.platform]
-        if not matching:
-            logger.error(
-                f"BucketsHunter doesn't support {args.platform} as a platform."
-            )
-            exit()
+    if args.platform != "all" and args.platform not in SUPPORTED_PLATFORMS:
+        logger.error(
+            f"BucketsHunter doesn't support {args.platform} as a platform. {SUPPORTED_PLATFORMS=}"
+        )
+        exit()
     return args
 
 
 def main():
-    final_scan_results = []
     args = validate_args(args=parse_args())
 
+    # pypi import wordlist (.txt files) - must
     this_dir, _ = os.path.split(__file__)
-    WORDLIST_PATH = os.path.join(this_dir, "data", args.wordlist)
-    with open(WORDLIST_PATH, "r", encoding="UTF-8") as wordlist_file:
-        mutations_wordlist = set(wordlist_file.read().splitlines())
+    wordlist_path= os.path.join(this_dir, "data", args.wordlist)
+    with open(wordlist_path, "r", encoding="UTF-8") as wordlist_file:
+        mutations_wordlist = iter(wordlist_file.read().splitlines())
 
     scan_config = Config(
         dns_utils=DNSUtils(args.name_server),
@@ -98,15 +96,12 @@ def main():
         buckets_permutations=generate_bucket_permutations(
             args.keyword, mutations_wordlist
         ),
-        # directory_wordlist=wordlist,  # currently using the same wordlist as bucket_permutations
         threads=args.threads,
     )
-    logger.info(
-        f"Generated {len(scan_config.buckets_permutations)} bucket permutations."
-    )
+    logger.info("Generated bucket permutations.")
 
+    final_scan_results = []
     if args.platform != "all":
-        # user provided input, instead of bunch of if else statements.
         scan_platform_module = importlib.import_module(
             f"buckets_hunter.modules.{args.platform}.{args.platform}_scanner"
         )
@@ -129,7 +124,6 @@ def main():
                 final_scan_results, json_file, escape_forward_slashes=False, indent=4
             )
     logger.info("Finished with scanning.")
-
 
 
 if __name__ == "__main__":

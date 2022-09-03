@@ -23,21 +23,21 @@ class GCPBucketsScanner:
         permissions_jres = requests.get(
             f"https://www.googleapis.com/storage/v1/b/{bucket_name}/iam/testPermissions?permissions=storage.buckets.delete&permissions=storage.buckets.get&permissions=storage.buckets.getIamPolicy&permissions=storage.buckets.setIamPolicy&permissions=storage.buckets.update&permissions=storage.objects.create&permissions=storage.objects.delete&permissions=storage.objects.get&permissions=storage.objects.list&permissions=storage.objects.update"
         ).json()
-        found_permissions = permissions_jres.get("permissions")
-        if found_permissions is not None:
-            return {
-                "platform": GCPBucketsScanner.PLATFORM,
-                "service": "GCP",
-                "bucket": bucket_url,
-                "permissions": {
-                    "readable": self._check_read_permission(found_permissions),
-                    "writeable": self._check_write_permission(found_permissions),
-                    "listable": self._check_list_permission(found_permissions),
-                    "privesc": self._check_privesc_permission(found_permissions),
-                },
-                "files": hunter_utils.get_bucket_files(bucket_url),
-            }
-        return None
+        found_permissions = permissions_jres.get("permissions", None)
+
+        if found_permissions is None: return None
+        return {
+            "platform": GCPBucketsScanner.PLATFORM,
+            "service": "GCP",
+            "bucket": bucket_url,
+            "permissions": {
+                "readable": self._check_read_permission(found_permissions),
+                "writeable": self._check_write_permission(found_permissions),
+                "listable": self._check_list_permission(found_permissions),
+                "privesc": self._check_privesc_permission(found_permissions),
+            },
+            "files": hunter_utils.get_bucket_files(bucket_url),
+        }
 
     def _bucket_exists(self, bucket_url):
         bucket_response = requests.get(bucket_url)
@@ -68,7 +68,7 @@ def run(scan_config):
     with ThreadPoolExecutor(max_workers=scan_config.threads) as executor:
         found_buckets_futures = {
             executor.submit(gcp_scanner.scan_bucket_permissions, bucket_name)
-            for bucket_name in scan_config.buckets_permutations
+            for bucket_name in list(scan_config.buckets_permutations)
         }
 
         for feature in as_completed(found_buckets_futures):

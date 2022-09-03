@@ -28,50 +28,57 @@ class AzureBucketsScanner:
         for storage_account in self.found_storage_accounts:
             # format: storage_account.blob.core.windows.net/container_directory/?restype=container&comp=list
             container_url = f"https://{CONTAINER_URL.format(storage_account, container_directory)}?restype=container&comp=list"
-            if requests.get(container_url).status_code == 200:
-                found_containers_url.append(container_url)
+            if requests.get(container_url).status_code != 200:
+                continue
+
+            found_containers_url.append(container_url)
 
         return found_containers_url
 
     def scan_storage_account(self, bucket_name: str) -> Dict[str, str]:
         """Finds Azure storage accounts, only possible to check if user exists by dns lookup."""
-        if re.search(STORAGE_ACCOUNT_REGEX, bucket_name) is not None:
-            storage_account_url = STORAGE_ACCOUNT_URL.format(bucket_name)
-            if self._dns_utils.dns_lookup(url=storage_account_url):
-                self.found_storage_accounts.add(bucket_name)
-                return {
-                    "platform": AzureBucketsScanner.PLATFORM,
-                    "service": "Azure storage account",
-                    "bucket": storage_account_url,
-                }
-        return None
+        if re.search(STORAGE_ACCOUNT_REGEX, bucket_name) is None:
+            return None
+
+        storage_account_url = STORAGE_ACCOUNT_URL.format(bucket_name)
+        if not self._dns_utils.dns_lookup(url=storage_account_url):
+            return None
+
+        self.found_storage_accounts.add(bucket_name)
+        return {
+            "platform": AzureBucketsScanner.PLATFORM,
+            "service": "Azure storage account",
+            "bucket": storage_account_url,
+        }
 
     def scan_web_apps(self, bucket_name: str) -> Dict[str, str]:
         """finds Azure websites by bruteforce."""
         web_app_url = WEBAPP_URL.format(bucket_name)
-        if self._dns_utils.dns_lookup(web_app_url):
-            return {
-                "platform": AzureBucketsScanner.PLATFORM,
-                "service": "Azure web app",
-                "bucket": web_app_url,
-            }
-        return None
+        if not self._dns_utils.dns_lookup(web_app_url):
+            return None
+
+        return {
+            "platform": AzureBucketsScanner.PLATFORM,
+            "service": "Azure web app",
+            "bucket": web_app_url,
+        }
 
     def scan_azure_vm(self, bucket_name: str) -> Dict[str, Union[str, List[str]]]:
         found_vms = []
         for region in AZURE_REGIONS:
             # format: {bucket_name}.{region}.cloudapp.azure.com
             azure_vm_url = AZURE_VM_URL.format(bucket_name, region)
-            if self._dns_utils.dns_lookup(azure_vm_url):
-                found_vms.append(azure_vm_url)
-                
-        if found_vms:
-            return {
-                "platform": AzureBucketsScanner.PLATFORM,
-                "service": "Azure VMs",
-                "vms": found_vms,
-            }
-        return None
+            if not self._dns_utils.dns_lookup(azure_vm_url):
+                continue
+            
+            found_vms.append(azure_vm_url)
+
+        if found_vms is None: return None
+        return {
+            "platform": AzureBucketsScanner.PLATFORM,
+            "service": "Azure VMs",
+            "vms": found_vms,
+        }
 
 
 def run(scan_config):
@@ -88,7 +95,7 @@ def run(scan_config):
             try:
                 storage_scan_result = feature.result()
             except Exception as err:
-                logger.error("Generated an exception: %s" % (err))
+                logger.error(f"Generated an exception: {err}")
             else:
                 if storage_scan_result:
                     print_service(storage_scan_result)
@@ -110,13 +117,13 @@ def run(scan_config):
         logger.info("Scanning for Azure Web Apps")
         azure_app_features = {
             executor.submit(azure_scanner.scan_web_apps, bucket_name)
-            for bucket_name in scan_config.buckets_permutations
+            for bucket_name in list(scan_config.buckets_permutations)
         }
         for feature in as_completed(azure_app_features):
             try:
                 web_scan_result = feature.result()
             except Exception as err:
-                logger.error("Generated an exception: %s" % (err))
+                logger.error(f"Generated an exception: {err}")
             else:
                 if web_scan_result:
                     print_service(web_scan_result)
@@ -127,13 +134,13 @@ def run(scan_config):
         logger.info("Scanning for Azure VMs\n")
         azure_vms_features = {
             executor.submit(azure_scanner.scan_azure_vm, bucket_name)
-            for bucket_name in scan_config.buckets_permutations
+            for bucket_name in list(scan_config.buckets_permutations)
         }
         for feature in as_completed(azure_vms_features):
             try:
                 vms_scan_result = feature.result()
             except Exception as err:
-                logger.error("Generated an exception: %s" % (err))
+                logger.error(f"Generated an exception: {err}")
             else:
                 if vms_scan_result:
                     print_service(vms_scan_result)

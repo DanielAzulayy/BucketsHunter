@@ -36,17 +36,19 @@ class S3BucketsScanner:
 
     def scan_aws_apps(self, bucket_name: str) -> Dict[str, str]:
         aws_app_url = AWS_APPS_URL.format(bucket_name)
-        if self._dns_utils.dns_lookup(aws_app_url):
-            return {
-                "platform": S3BucketsScanner.PLATFORM,
-                "service": "AWS apps",
-                "bucket": aws_app_url,
-            }
-        return None
+        if not self._dns_utils.dns_lookup(aws_app_url):
+            return None
+        
+        return {
+            "platform": S3BucketsScanner.PLATFORM,
+            "service": "AWS apps",
+            "bucket": aws_app_url,
+        }
 
     def scan_bucket_permissions(
         self, bucket_name: str
     ) -> Dict[str, Union[str, Dict[str, bool]]]:
+        print(bucket_name)
         if not self._bucket_exists(bucket_name):
             return None
 
@@ -115,10 +117,11 @@ def run(scan_config):
     s3_bucket_scanner = S3BucketsScanner(scan_config.dns_utils)
     aws_scan_results = []
 
+    # to do: make a function to generate the iters
     with ThreadPoolExecutor(max_workers=scan_config.threads) as executor:
         found_buckets_futures = {
             executor.submit(s3_bucket_scanner.scan_bucket_permissions, bucket_name)
-            for bucket_name in scan_config.buckets_permutations
+            for bucket_name in list(scan_config.buckets_permutations)
         }
         for feature in as_completed(found_buckets_futures):
             try:
@@ -132,7 +135,7 @@ def run(scan_config):
 
         found_apps_futures = {
             executor.submit(s3_bucket_scanner.scan_aws_apps, bucket_name)
-            for bucket_name in scan_config.buckets_permutations
+            for bucket_name in list(scan_config.buckets_permutations)
         }
         for feature in as_completed(found_apps_futures):
             try:
