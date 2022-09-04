@@ -1,6 +1,6 @@
 import os
 import re
-from typing import List, Iterator
+from typing import Iterator, List
 
 import requests
 
@@ -9,7 +9,7 @@ KEY_REGEX = re.compile(r"<(?:Key|Name)>(.*?)</(?:Key|Name)>")
 
 def generate_bucket_permutations(keyword: str, mutations) -> Iterator:
     bucket_names = [keyword]
-    for mutation in list(mutations):
+    for mutation in mutations:
         # format ex: {keyword}-{mutation}.s3.amazonaws.com
         bucket_names.append(f"{keyword}-{mutation}")
 

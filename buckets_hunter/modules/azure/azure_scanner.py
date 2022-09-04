@@ -4,9 +4,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Union
 
 import requests
+from loguru import logger
+
 from buckets_hunter.modules.azure.regions import AZURE_REGIONS
 from buckets_hunter.utils.notify import print_service
-from loguru import logger
 
 STORAGE_ACCOUNT_REGEX = re.compile("^[a-z0-9]{3,21}$")
 STORAGE_ACCOUNT_URL = "{}.blob.core.windows.net"
@@ -117,7 +118,7 @@ def run(scan_config):
         logger.info("Scanning for Azure Web Apps")
         azure_app_features = {
             executor.submit(azure_scanner.scan_web_apps, bucket_name)
-            for bucket_name in list(scan_config.buckets_permutations)
+            for bucket_name in scan_config.buckets_permutations
         }
         for feature in as_completed(azure_app_features):
             try:
@@ -134,7 +135,7 @@ def run(scan_config):
         logger.info("Scanning for Azure VMs\n")
         azure_vms_features = {
             executor.submit(azure_scanner.scan_azure_vm, bucket_name)
-            for bucket_name in list(scan_config.buckets_permutations)
+            for bucket_name in scan_config.buckets_permutations
         }
         for feature in as_completed(azure_vms_features):
             try:

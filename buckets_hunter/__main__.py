@@ -9,11 +9,9 @@ from buckets_hunter.conf.scan_config import Config
 from buckets_hunter.modules.aws import aws_scanner
 from buckets_hunter.modules.azure import azure_scanner
 from buckets_hunter.modules.gcp import gcp_scanner
-from buckets_hunter.utils.dns import DNSUtils
 from buckets_hunter.utils import hunter_utils
-from buckets_hunter.utils.hunter_utils import (
-    generate_bucket_permutations,
-)
+from buckets_hunter.utils.dns import DNSUtils
+from buckets_hunter.utils.hunter_utils import generate_bucket_permutations
 
 SUPPORTED_PLATFORMS = ["aws", "azure", "gcp"]
 

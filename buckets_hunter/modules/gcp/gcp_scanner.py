@@ -2,9 +2,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, Union
 
 import requests
+from loguru import logger
+
 from buckets_hunter.utils import hunter_utils
 from buckets_hunter.utils.notify import print_service
-from loguru import logger
 
 
 class GCPBucketsScanner:
@@ -68,7 +69,7 @@ def run(scan_config):
     with ThreadPoolExecutor(max_workers=scan_config.threads) as executor:
         found_buckets_futures = {
             executor.submit(gcp_scanner.scan_bucket_permissions, bucket_name)
-            for bucket_name in list(scan_config.buckets_permutations)
+            for bucket_name in scan_config.buckets_permutations
         }
 
         for feature in as_completed(found_buckets_futures):

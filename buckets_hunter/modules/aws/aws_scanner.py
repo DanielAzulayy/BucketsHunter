@@ -6,9 +6,10 @@ from typing import Dict, Union
 from boto3 import client
 from botocore import UNSIGNED
 from botocore.client import ClientError, Config
+from loguru import logger
+
 from buckets_hunter.utils import dns, hunter_utils
 from buckets_hunter.utils.notify import print_open_bucket, print_service
-from loguru import logger
 
 S3_BUCKET_URL = "{}.s3.amazonaws.com"
 AWS_APPS_URL = "{}.awsapps.com"
@@ -121,7 +122,7 @@ def run(scan_config):
     with ThreadPoolExecutor(max_workers=scan_config.threads) as executor:
         found_buckets_futures = {
             executor.submit(s3_bucket_scanner.scan_bucket_permissions, bucket_name)
-            for bucket_name in list(scan_config.buckets_permutations)
+            for bucket_name in scan_config.buckets_permutations
         }
         for feature in as_completed(found_buckets_futures):
             try:
@@ -135,7 +136,7 @@ def run(scan_config):
 
         found_apps_futures = {
             executor.submit(s3_bucket_scanner.scan_aws_apps, bucket_name)
-            for bucket_name in list(scan_config.buckets_permutations)
+            for bucket_name in scan_config.buckets_permutations
         }
         for feature in as_completed(found_apps_futures):
             try:
